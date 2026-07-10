@@ -3,12 +3,11 @@
 import numpy as np
 import soundfile as sf
 
-def load_base_audio(file_path: str):
-    """Loads WAV, MP3, FLAC, or OGG and standardizes to float32 stereo [num_samples, 2]."""
+def load_base_audio(file_path: str, force_stereo: bool = True):
     data, sample_rate = sf.read(file_path, dtype='float32')
     
     was_mono = len(data.shape) == 1
-    if was_mono:
+    if was_mono and force_stereo:
         print("Note: Base audio is Mono. Duplicating to Stereo for processing.")
         data = np.column_stack((data, data))
         
@@ -22,7 +21,6 @@ def process_single_channel_inplace(
     end_sec: float, 
     sample_rate: int
 ):
-    """Modifies the segment of the channel view directly to avoid copying the entire track."""
     total_samples = len(channel_view)
     start_sample = max(0, min(int(start_sec * sample_rate), total_samples))
     end_sample = max(0, min(int(end_sec * sample_rate), total_samples))
@@ -33,17 +31,29 @@ def process_single_channel_inplace(
         
     segment = channel_view[start_sample:end_sample]
     
+    if segment_length > 1:
+        x_target = np.linspace(0, len(top_env_small) - 1, segment_length, dtype=np.float32)
+    else:
+        x_target = np.zeros(segment_length, dtype=np.float32)
+        
     x_original = np.arange(len(top_env_small), dtype=np.float32)
-    x_target = np.linspace(0, len(top_env_small) - 1, segment_length, dtype=np.float32)
     
     top_env = np.interp(x_target, x_original, top_env_small)
     bottom_env = np.interp(x_target, x_original, bottom_env_small)
     
-    amplitude = (top_env - bottom_env) * 0.5
-    midpoint = (top_env + bottom_env) * 0.5
-    
-    segment *= amplitude
-    segment += midpoint
+    """
+    bottom_env -= top_env   | B - T                 | thickness         (B - T)
+    bottom_env *= -0.5      | 0.5 * (T - B)         | amplitude         (0.5 * (T - B))
+    top_env -= bottom_env   | T - [0.5 * (T - B)]   | DC offset center  (0.5 * (T + B))
+    segment *= bottom_env   | segment * amplitude   | squeezed          (segment * amplitude)
+    segment += top_env      | squeezed + center     | final             (squeezed + center)
+    """
+
+    bottom_env -= top_env
+    bottom_env *= -0.5   
+    top_env -= bottom_env
+    segment *= bottom_env
+    segment += top_env
     
     return start_sample, end_sample
 
@@ -55,34 +65,38 @@ def generate_wave_on_base_stereo(
     link_stereo: bool = True,
     output_path: str = "output.wav"
 ):
-    sample_rate, modulated_stereo, was_mono = load_base_audio(base_audio_path)
+    force_stereo = not link_stereo
+    sample_rate, modulated_audio, was_mono = load_base_audio(file_path=base_audio_path, force_stereo=force_stereo)
     
-    start_sample_L, end_sample_L = process_single_channel_inplace(
-        modulated_stereo[:, 0], top_env_L, bottom_env_L, start_L, end_L, sample_rate
-    )
+    is_mono_processing = (was_mono and link_stereo)
     
-    start_sample_R, end_sample_R = process_single_channel_inplace(
-        modulated_stereo[:, 1], top_env_R, bottom_env_R, start_R, end_R, sample_rate
-    )
+    if is_mono_processing:
+        start_sample_L, end_sample_L = process_single_channel_inplace(
+            modulated_audio, top_env_L, bottom_env_L, start_L, end_L, sample_rate
+        )
+        start_sample_R, end_sample_R = start_sample_L, end_sample_L
+    else:
+        start_sample_L, end_sample_L = process_single_channel_inplace(
+            modulated_audio[:, 0], top_env_L, bottom_env_L, start_L, end_L, sample_rate
+        )
+        start_sample_R, end_sample_R = process_single_channel_inplace(
+            modulated_audio[:, 1], top_env_R, bottom_env_R, start_R, end_R, sample_rate
+        )
     
     if export_full_song:
-        final_audio = modulated_stereo
+        final_audio = modulated_audio
     else:
         export_start = max(0, min(start_sample_L, start_sample_R))
-        export_end = min(len(modulated_stereo), max(end_sample_L, end_sample_R))
+        export_end = min(len(modulated_audio), max(end_sample_L, end_sample_R))
         
         if export_end <= export_start:
-            final_audio = modulated_stereo
+            final_audio = modulated_audio
         else:
-            final_audio = modulated_stereo[export_start:export_end]
+            final_audio = modulated_audio[export_start:export_end]
             
-    if was_mono and link_stereo:
-        print("Output configuration satisfies Mono rule. Collapsing output to Mono.")
-        final_audio = final_audio[:, 0]
-            
-    max_val = np.max(np.abs(final_audio))
-    if max_val > 1e-8 and not np.isclose(max_val, 1.0):
+    max_val = max(np.max(final_audio), -np.min(final_audio))
+    if max_val > 1:
         final_audio /= max_val
         
-    sf.write(output_path, final_audio, sample_rate, format='WAV', subtype='PCM_16')
-    print(f"Saved output to {output_path} (Duration: {len(final_audio)/sample_rate:.2f}s)")
+    sf.write(output_path, final_audio, sample_rate, format='WAV', subtype='PCM_24')
+    print(f"Saved output to {output_path}")
