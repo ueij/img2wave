@@ -4,15 +4,11 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 
 > **Note:** The GUI is currently really simple (v0.2.0) right now because I'm learning (づ_ど); while the underlying Python engine supports advanced settings (like stereo splitting and custom thresholds), the GUI uses defaults for simple single-image audio modulation.
 
----
-
 ## Features Available in the GUI
 * **Base Audio Selection:** Works with `.mp3`, `.wav`, and `.ogg` files.
 * **Image Source Selection:** Supports `.png`, `.jpg`, `.jpeg`, and `.webp` images.
 * **Segment Timing:** Choose exactly when (in seconds) the image modulation starts and ends within your base audio.
 * **Stereo Processing:** Generates a 24-bit stereo `.wav` file (`output.wav`) with the modulation applied to your selected segment.
-
----
 
 ## How to Use the Windows App (.exe)
 
@@ -28,8 +24,6 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 > The processed file is automatically saved as `output.wav` in the directory where the application is running. **If a file named `output.wav` already exists in that folder, it will be overwritten without warning.** Be sure to rename or move your previous outputs if you want to keep them.
 
 *The GUI currently applies a binarization threshold of 128, a standard luminance grayscale filter (ITU-R BT.601 Luma), and keeps the stereo channel images mirrored.*
-
----
 
 ## Running from Source (Advanced Users)
 
