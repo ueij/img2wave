@@ -17,18 +17,19 @@ def main():
     parser.add_argument("--link-grayscale", action=argparse.BooleanOptionalAction, default=True, help="Link Left and Right grayscale methods")
     parser.add_argument("--link-invert", action=argparse.BooleanOptionalAction, default=True, help="Link Left and Right color inversion settings")
     
-    parser.add_argument("--image-L", type=str, required=True, help="Path to Left/Single image")
-    parser.add_argument("--start-L", type=float, default=2.0, help="Left segment start time in seconds")
-    parser.add_argument("--end-L", type=float, default=5.0, help="Left segment end time in seconds")
-    parser.add_argument("--threshold-L", type=int, default=128, help="Threshold value (0-255) for Left channel")
+    parser.add_argument("--image", "--image-L", dest="image_L", type=str, required=True, help="Path to Left/Single image")
+    parser.add_argument("--start", "--start-L", dest="start_L", type=float, default=2.0, help="Left segment start time in seconds")
+    parser.add_argument("--end", "--end-L", dest="end_L", type=float, default=5.0, help="Left segment end time in seconds")
+    parser.add_argument("--threshold", "--threshold-L", dest="threshold_L", type=int, default=128, help="Threshold value (0-255) for Left channel")
     parser.add_argument(
-        "--grayscale-L", 
+        "--grayscale", "--grayscale-L",
+        dest="grayscale_L", 
         type=str, 
         choices=["luminance_601", "luminance_709", "average", "lightness"], 
         default="luminance_601", 
         help="Grayscale conversion algorithm for Left channel"
     )
-    parser.add_argument("--invert-L", action="store_true", help="Invert colors for Left channel")
+    parser.add_argument("--invert", "--invert-L", dest="invert_L", action="store_true", help="Invert colors for Left channel")
     
     parser.add_argument("--image-R", type=str, default=None, help="Path to Right image")
     parser.add_argument("--start-R", type=float, default=None, help="Right segment start time in seconds")
