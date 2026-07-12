@@ -1,23 +1,100 @@
 import sys
+import time
 import os
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QPushButton, QLineEdit, QFileDialog, QMessageBox)
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QPushButton, QLineEdit, QFileDialog, QMessageBox
+)
+from PySide6.QtCore import Qt, QObject, Signal, QRunnable, QThreadPool
 from PySide6.QtGui import QDoubleValidator
 
 from image_processor import get_image_boundaries
 from audio_generator import generate_wave_on_base_stereo
 
+
+class WorkerSignals(QObject):
+    finished = Signal(str)
+    error = Signal(str)
+
+
+class AudioGeneratorWorker(QRunnable):
+    def __init__(self, audio_path, image_path, start_sec, end_sec, config):
+        super().__init__()
+        self.audio_path = audio_path
+        self.image_path = image_path
+        self.start_sec = start_sec
+        self.end_sec = end_sec
+        self.config = config
+        self.signals = WorkerSignals()
+
+    def run(self):
+        try:
+            start_time = time.perf_counter()
+
+            top_env_L, bottom_env_L = get_image_boundaries(
+                self.image_path,
+                width=self.config["width"],
+                height=self.config["height"],
+                threshold=self.config["threshold"],
+                grayscale_method=self.config["grayscale_method"],
+                invert=self.config["invert"]
+            )
+
+            top_env_R, bottom_env_R = top_env_L, bottom_env_L
+            start_R, end_R = self.start_sec, self.end_sec
+
+            generate_wave_on_base_stereo(
+                base_audio_path=self.audio_path,
+                top_env_L=top_env_L, bottom_env_L=bottom_env_L, start_L=self.start_sec, end_L=self.end_sec,
+                top_env_R=top_env_R, bottom_env_R=bottom_env_R, start_R=start_R, end_R=end_R,
+                export_full_song=True,
+                link_stereo=True,
+                output_path=self.config["output_path"]
+            )
+            
+            end_time = time.perf_counter()
+            elapsed_time = end_time - start_time
+            
+            print(f"Generation completed in {elapsed_time:.4f} seconds.")
+
+            result_str = f"{os.path.abspath(self.config['output_path'])}|{elapsed_time:.4f}"
+            self.signals.finished.emit(result_str)
+
+        except Exception as e:
+            self.signals.error.emit(str(e))
+
+
 class ImageToSoundWindow(QMainWindow):
     BG_MAIN = "rgb(24, 24, 24)"
+    INPUT_BG = "rgb(36, 36, 36)"
+    
+    TEXT_MAIN = "white"
+    TEXT_MUTED = "gray"
+    TEXT_DISABLED = "gray"
+    
     ACCENT_BLUE = "rgb(74, 164, 234)"
     ACCENT_HOVER = "rgb(100, 180, 240)"
     ACCENT_PRESS = "rgb(42, 136, 200)"
+    
     SECTION_BORDER = "rgb(48, 48, 48)"
     SECTION_BG = "rgba(48, 48, 48, 0.04)"
-    INPUT_BG = "rgb(36, 36, 36)" 
+    BROWSE_BORDER = "rgb(60, 60, 65)"
+    BROWSE_HOVER = "rgb(65, 65, 70)"
+    
+    DISABLED_BG_DARK = "rgb(28, 28, 28)"
+    DISABLED_BG_LIGHT = "rgb(50, 50, 50)"
+
+    DEFAULT_CONFIG = {
+        "width": 2048,
+        "height": 512,
+        "threshold": 128,
+        "grayscale_method": "luminance_601",
+        "invert": False,
+        "output_path": "output.wav"
+    }
 
     def __init__(self):
         super().__init__()
+        self.thread_pool = QThreadPool.globalInstance()
         self.init_ui()
 
     def init_ui(self):
@@ -34,22 +111,17 @@ class ImageToSoundWindow(QMainWindow):
         top_row_layout.setContentsMargins(0, 0, 0, 0) 
         top_row_layout.setSpacing(10) 
         
-        self.top_text = QLabel("Base Audio:")
-        top_row_layout.addWidget(self.top_text, alignment=Qt.AlignmentFlag.AlignVCenter)
-        
-        self.audio_path_input = QLineEdit()
-        self.audio_path_input.setPlaceholderText("No audio selected...")
-        self.audio_path_input.setReadOnly(True)
-        top_row_layout.addWidget(self.audio_path_input, alignment=Qt.AlignmentFlag.AlignVCenter)
-        
-        self.audio_browse_button = QPushButton("Browse...")
-        self.audio_browse_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.audio_browse_button.setObjectName("BrowseButton") 
-        top_row_layout.addWidget(self.audio_browse_button, alignment=Qt.AlignmentFlag.AlignVCenter)
+        audio_label, self.audio_path_input, self.audio_browse_button = self._create_file_field(
+            "Base Audio:", "No audio selected..."
+        )
         
         self.gen_button = QPushButton("Generate Audio")
         self.gen_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.gen_button.setObjectName("GenerateButton") 
+        
+        top_row_layout.addWidget(audio_label, alignment=Qt.AlignmentFlag.AlignVCenter)
+        top_row_layout.addWidget(self.audio_path_input, alignment=Qt.AlignmentFlag.AlignVCenter)
+        top_row_layout.addWidget(self.audio_browse_button, alignment=Qt.AlignmentFlag.AlignVCenter)
         top_row_layout.addWidget(self.gen_button, alignment=Qt.AlignmentFlag.AlignVCenter)
         
         self.top_section = QGroupBox("IMAGE SETTINGS")
@@ -63,19 +135,13 @@ class ImageToSoundWindow(QMainWindow):
         source_row_layout.setContentsMargins(0, 0, 0, 0) 
         source_row_layout.setSpacing(10) 
         
-        self.img_source_text = QLabel("Image Source:")
-        source_row_layout.addWidget(self.img_source_text, alignment=Qt.AlignmentFlag.AlignVCenter)
+        img_label, self.path_input, self.browse_button = self._create_file_field(
+            "Image Source:", "No image selected..."
+        )
         
-        self.path_input = QLineEdit()
-        self.path_input.setPlaceholderText("No image selected...")
-        self.path_input.setReadOnly(True) 
+        source_row_layout.addWidget(img_label, alignment=Qt.AlignmentFlag.AlignVCenter)
         source_row_layout.addWidget(self.path_input, alignment=Qt.AlignmentFlag.AlignVCenter)
-        
-        self.browse_button = QPushButton("Browse...")
-        self.browse_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.browse_button.setObjectName("BrowseButton") 
         source_row_layout.addWidget(self.browse_button, alignment=Qt.AlignmentFlag.AlignVCenter)
-        
         top_section_layout.addLayout(source_row_layout)
 
         timing_row_layout = QHBoxLayout()
@@ -84,34 +150,33 @@ class ImageToSoundWindow(QMainWindow):
         
         self.timing_text = QLabel("Segment Timing:")
         timing_row_layout.addWidget(self.timing_text, alignment=Qt.AlignmentFlag.AlignVCenter)
-        timing_row_layout.addStretch()
 
-        # Input Validator allowing up to 999999.999999 (6 whole digits, 6 decimals)
         duration_validator = QDoubleValidator(0.0, 999999.0, 6, self)
         duration_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
 
-        self.start_input = QLineEdit()
+        self.start_input = QLineEdit("2.0")
         self.start_input.setPlaceholderText("Start (s)")
         self.start_input.setFixedWidth(100)
         self.start_input.setValidator(duration_validator)
         timing_row_layout.addWidget(self.start_input, alignment=Qt.AlignmentFlag.AlignVCenter)
         
-        self.end_input = QLineEdit()
+        self.end_input = QLineEdit("5.0")
         self.end_input.setPlaceholderText("End (s)")
         self.end_input.setFixedWidth(100)
         self.end_input.setValidator(duration_validator)
         timing_row_layout.addWidget(self.end_input, alignment=Qt.AlignmentFlag.AlignVCenter)
 
+        timing_row_layout.addStretch()
         top_section_layout.addLayout(timing_row_layout)
 
         footer_layout = QHBoxLayout()
         footer_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.version_label = QLabel("v0.2.0")
-        self.version_label.setObjectName("FooterText")
+        self.version_label = QLabel("v0.2.1")
+        self.version_label.setObjectName("VersionText")
         
         self.author_label = QLabel("ueij")
-        self.author_label.setObjectName("FooterText")
+        self.author_label.setObjectName("AuthorText")
         
         footer_layout.addWidget(self.version_label)
         footer_layout.addStretch()
@@ -130,53 +195,80 @@ class ImageToSoundWindow(QMainWindow):
         self.resize(550, hint_height)
         self.setFixedHeight(hint_height)
 
+    def _create_file_field(self, label_text: str, placeholder: str):
+        label = QLabel(label_text)
+        
+        line_edit = QLineEdit()
+        line_edit.setPlaceholderText(placeholder)
+        line_edit.setReadOnly(True)
+        
+        button = QPushButton("Browse...")
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.setObjectName("BrowseButton")
+        
+        return label, line_edit, button
+
     def setup_connections(self):
-        self.audio_browse_button.clicked.connect(self.browse_audio)
-        self.browse_button.clicked.connect(self.browse_image)
+        self.audio_browse_button.clicked.connect(
+            lambda: self._browse_file("Select Base Audio", "Audio Files (*.mp3 *.wav *.ogg)", self.audio_path_input)
+        )
+        self.browse_button.clicked.connect(
+            lambda: self._browse_file("Select Image Source", "Image Files (*.png *.jpg *.jpeg *.webp)", self.path_input)
+        )
         self.gen_button.clicked.connect(self.generate_audio)
 
-    def browse_audio(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Base Audio", "", "Audio Files (*.mp3 *.wav *.ogg)")
+    def _browse_file(self, title: str, filter_str: str, target_input: QLineEdit):
+        file_path, _ = QFileDialog.getOpenFileName(self, title, "", filter_str)
         if file_path:
-            self.audio_path_input.setText(file_path)
+            target_input.setText(file_path)
 
-    def browse_image(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Image Source", "", "Image Files (*.png *.jpg *.jpeg *.webp)")
-        if file_path:
-            self.path_input.setText(file_path)
-
-    def show_native_message(self, title: str, text: str, icon_type: str = "info"):
-        """
-        Displays a native OS dialog on Windows using the Win32 API.
-        Falls back to a styled PySide QMessageBox on other operating systems.
-        """
-        if sys.platform == "win32":
-            import ctypes
-            # Define Windows API flags
-            # MB_OK = 0x00000000
-            flags = 0x00000000 
-            
-            if icon_type == "info":
-                flags |= 0x00000040  # MB_ICONINFORMATION
-            elif icon_type == "warning":
-                flags |= 0x00000030  # MB_ICONWARNING
-            elif icon_type == "error":
-                flags |= 0x00000010  # MB_ICONERROR
-                
-            hwnd = int(self.winId()) if self else 0
-            ctypes.windll.user32.MessageBoxW(hwnd, text, title, flags)
+    def show_message(self, title: str, text: str, icon_type: str = "info"):
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(text)
+        
+        if icon_type == "warning":
+            msg.setIcon(QMessageBox.Icon.Warning)
+        elif icon_type == "error":
+            msg.setIcon(QMessageBox.Icon.Critical)
         else:
-            # Fallback for macOS / Linux
-            msg = QMessageBox(self)
-            msg.setWindowTitle(title)
-            msg.setText(text)
-            if icon_type == "info":
-                msg.setIcon(QMessageBox.Icon.Information)
-            elif icon_type == "warning":
-                msg.setIcon(QMessageBox.Icon.Warning)
-            elif icon_type == "error":
-                msg.setIcon(QMessageBox.Icon.Critical)
-            msg.exec()
+            msg.setIcon(QMessageBox.Icon.Information)
+
+        msg.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {self.BG_MAIN};
+            }}
+            QLabel {{
+                color: {self.TEXT_MAIN};
+                font-size: 14px;
+                font-weight: 500;
+            }}
+            QPushButton {{
+                background-color: {self.SECTION_BORDER};
+                color: {self.TEXT_MAIN};
+                border: 1px solid {self.BROWSE_BORDER};
+                border-radius: 4px;
+                padding: 2px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                min-width: 40px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.BROWSE_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.ACCENT_PRESS};
+                border-color: transparent;
+            }}
+        """)
+        msg.exec()
+
+    def set_ui_enabled(self, enabled: bool):
+        self.audio_browse_button.setEnabled(enabled)
+        self.browse_button.setEnabled(enabled)
+        self.start_input.setEnabled(enabled)
+        self.end_input.setEnabled(enabled)
+        self.gen_button.setEnabled(enabled)
 
     def generate_audio(self):
         audio_path = self.audio_path_input.text().strip()
@@ -185,68 +277,56 @@ class ImageToSoundWindow(QMainWindow):
         end_text = self.end_input.text().strip()
 
         if not audio_path or not os.path.exists(audio_path):
-            self.show_native_message("Input Error", "Please select a valid base audio file first.", "warning")
+            self.show_message("Input Error", "Please select a valid base audio file first.", "warning")
             return
 
         if not image_path or not os.path.exists(image_path):
-            self.show_native_message("Input Error", "Please select a valid image source file first.", "warning")
+            self.show_message("Input Error", "Please select a valid image source file first.", "warning")
+            return
+
+        if not start_text or not end_text:
+            self.show_message("Input Error", "Start and End times cannot be left empty.", "warning")
             return
 
         try:
-            start_sec = float(start_text) if start_text else 2.0
-            end_sec = float(end_text) if end_text else 5.0
+            start_sec = float(start_text)
+            end_sec = float(end_text)
         except ValueError:
-            self.show_native_message("Input Error", "Start and End times must be valid numbers.", "warning")
+            self.show_message("Input Error", "Start and End times must be valid numbers.", "warning")
             return
 
         if start_sec >= end_sec:
-            self.show_native_message("Input Error", "Start time must be less than end time.", "warning")
+            self.show_message("Input Error", "Start time must be less than end time.", "warning")
             return
 
-        # Defaults for future options
-        width = 2048
-        height = 512
-        threshold = 128
-        grayscale_method = "luminance_601"
-        invert = False
-        output_path = "output.wav"
+        self.set_ui_enabled(False)
 
-        try:
-            print("Processing image boundaries...")
-            top_env_L, bottom_env_L = get_image_boundaries(
-                image_path,
-                width=width,
-                height=height,
-                threshold=threshold,
-                grayscale_method=grayscale_method,
-                invert=invert
-            )
+        worker = AudioGeneratorWorker(
+            audio_path, image_path, start_sec, end_sec, self.DEFAULT_CONFIG
+        )
+        worker.signals.finished.connect(self.on_generation_success)
+        worker.signals.error.connect(self.on_generation_failed)
+        
+        self.thread_pool.start(worker)
 
-            top_env_R, bottom_env_R = top_env_L, bottom_env_L
-            start_R, end_R = start_sec, end_sec
+    def on_generation_success(self, result_data):
+        self.set_ui_enabled(True)
 
-            print("Modulating base audio...")
-            generate_wave_on_base_stereo(
-                base_audio_path=audio_path,
-                top_env_L=top_env_L, bottom_env_L=bottom_env_L, start_L=start_sec, end_L=end_sec,
-                top_env_R=top_env_R, bottom_env_R=bottom_env_R, start_R=start_R, end_R=end_R,
-                export_full_song=True,
-                link_stereo=True,
-                output_path=output_path
-            )
+        file_path, elapsed_time = result_data.split("|")
 
-            self.show_native_message(
-                "Success", 
-                f"Audio generation complete!\n\nSaved to:\n{os.path.abspath(output_path)}", 
-                "info"
-            )
+        self.show_message(
+            "Success", 
+            f"Audio generation completed in: {elapsed_time} seconds\n\nSaved to:\n{file_path}",
+            "info"
+        )
 
-        except Exception as e:
-            self.show_native_message(
-                "Processing Error", 
-                f"An error occurred during calculation:\n\n{str(e)}", 
-                "error"
-            )
+    def on_generation_failed(self, error_message):
+        self.set_ui_enabled(True)
+        self.show_message(
+            "Processing Error", 
+            f"An error occurred during calculation:\n\n{error_message}", 
+            "error"
+        )
 
     def apply_styles(self):
         self.setStyleSheet(f"""
@@ -255,36 +335,47 @@ class ImageToSoundWindow(QMainWindow):
             }}
             
             QLabel {{
-                color: white; 
+                color: {self.TEXT_MAIN}; 
                 font-size: 14px; 
                 font-weight: 600;
             }}
-            
-            QLabel#FooterText {{
-                color: grey;
+            QLabel#VersionText {{
+                color: {self.TEXT_MUTED};
                 font-size: 12px;
                 font-weight: 600;
-                letter-spacing: 1px;
+            }}
+            QLabel#AuthorText {{
+                color: {self.TEXT_MUTED};
+                font-size: 12px;
+                font-weight: 500;
+                letter-spacing: 2px;
+            }}
+
+            QPushButton, QLineEdit {{
+                font-size: 12px;
+                font-weight: 500;   
+                border-radius: 4px;
             }}
             
-            QLineEdit, QPushButton {{
-                font-size: 12px;
-                font-weight: 600;
-                padding: 2px 6px;
-                height: 18px;                 
-                border-radius: 4px;
+            QPushButton {{
+                padding: 4px 8px;
                 border: 1px solid transparent; 
             }}
             
             QLineEdit {{
+                padding: 4px 4px;
                 background-color: {self.INPUT_BG};
-                color: white;
+                color: {self.TEXT_MAIN};
                 border: 1px solid {self.SECTION_BORDER};
+            }}
+            QLineEdit:disabled {{
+                color: {self.TEXT_DISABLED};
+                background-color: {self.DISABLED_BG_DARK};
             }}
             
             QPushButton#GenerateButton {{
                 background-color: {self.ACCENT_BLUE};
-                color: white;
+                color: {self.TEXT_MAIN};
                 font-weight: 600;
             }}
             QPushButton#GenerateButton:hover {{
@@ -293,14 +384,23 @@ class ImageToSoundWindow(QMainWindow):
             QPushButton#GenerateButton:pressed {{
                 background-color: {self.ACCENT_PRESS};
             }}
+            QPushButton#GenerateButton:disabled {{
+                background-color: {self.DISABLED_BG_LIGHT};
+                color: {self.TEXT_DISABLED};
+            }}
             
             QPushButton#BrowseButton {{
                 background-color: {self.SECTION_BORDER};
-                color: white;
-                border: 1px solid rgb(60, 60, 65);
+                color: {self.TEXT_MAIN};
+                border: 1px solid {self.BROWSE_BORDER};
             }}
             QPushButton#BrowseButton:hover {{
-                background-color: rgb(65, 65, 70);
+                background-color: {self.BROWSE_HOVER};
+            }}
+            QPushButton#BrowseButton:disabled {{
+                background-color: {self.DISABLED_BG_DARK};
+                color: {self.TEXT_DISABLED};
+                border: 1px solid transparent;
             }}
             
             QGroupBox#TopSection {{
@@ -313,12 +413,13 @@ class ImageToSoundWindow(QMainWindow):
                 color: {self.SECTION_BORDER}; 
             }}
             QGroupBox::title {{
-                color: gray;
+                color: {self.TEXT_MUTED};
                 subcontrol-origin: margin;
                 subcontrol-position: top right;
-                padding: 0 4px;
+                padding: 0 2px;
             }}
         """)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
