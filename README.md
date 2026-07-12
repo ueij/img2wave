@@ -1,8 +1,10 @@
-# Image to Sound (v0.2.0)
+# Image to Sound (v0.2.1)
 
 A desktop utility that modulates the amplitude of an existing audio file using the top and bottom boundaries of an image.
 
-> **Note:** The GUI is currently really simple (v0.2.0) right now because I'm learning (づ_ど); while the underlying Python engine supports advanced settings (like stereo splitting and custom thresholds), the GUI uses defaults for simple single-image audio modulation.
+> **Note:** The GUI is currently really simple (v0.2.1) right now because I'm learning (づ_ど); while the underlying Python engine supports advanced settings (like stereo splitting and custom thresholds), the GUI uses defaults for simple single-image audio modulation.
+
+![Image to Sound GUI](images/gui.png)
 
 ## Features Available in the GUI
 * **Base Audio Selection:** Works with `.mp3`, `.wav`, and `.ogg` files.
@@ -13,7 +15,7 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 ## How to Use the Windows App (.exe)
 
 1. Go to the **Releases** tab on the right side of this GitHub repository.
-2. Download `image-to-sound-v0.2.0-windows-x64.exe`.
+2. Download `image-to-sound-v0.2.1-windows-x64.exe`.
 3. Extract the folder (if zipped) and run the executable.
 4. **Select Base Audio:** Click "Browse..." and select your background audio track.
 5. **Select Image Source:** Click "Browse..." and select the image you want to extract contours from.
@@ -24,6 +26,25 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 > The processed file is automatically saved as `output.wav` in the directory where the application is running. **If a file named `output.wav` already exists in that folder, it will be overwritten without warning.** Be sure to rename or move your previous outputs if you want to keep them.
 
 *The GUI currently applies a binarization threshold of 128, a standard luminance grayscale filter (ITU-R BT.601 Luma), and keeps the stereo channel images mirrored.*
+
+## Preview and Examples
+
+Below is an example of how a simple shape modulates a continuous background audio track.
+
+### 1. The Modulation Process
+
+| 1. Source Image (`domino.png`) | 2. Resulting Audacity Waveform |
+| :---: | :---: |
+| <img src="images/domino.png" width="300" alt="domino Text Image Source"> | <img src="images/audacity_output.png" width="300" alt="Audacity Waveform Output"> |
+
+### 2. Audio Comparison
+
+You can listen to how the shape of the circle squeezes and shapes the volume of the base track:
+
+* **Original Base Audio:** 
+  [Listen to Original Track](audios/audio_domino.wav)
+* **Modulated Output (using the circle image above):** 
+  [Listen to Modulated Output](audios/audio_output.wav)
 
 ## Running from Source (Advanced Users)
 
