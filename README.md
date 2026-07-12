@@ -16,16 +16,19 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 
 1. Go to the **Releases** tab on the right side of this GitHub repository.
 2. Download `image-to-sound-v0.2.1-windows-x64.exe`.
-3. Extract the folder (if zipped) and run the executable.
-4. **Select Base Audio:** Click "Browse..." and select your background audio track.
+3. Run the executable.
+4. **Select Base Audio:** Click "Browse..." and select your base audio track.
 5. **Select Image Source:** Click "Browse..." and select the image you want to extract contours from.
 6. **Set Segment Timing:** Input the start time and end time (in seconds) where you want the visual shape to affect the audio.
 7. **Generate:** Click **Generate Audio**. The processed file will be saved as `output.wav` in the directory where the application is running.
 
-> [!WARNING]
-> The processed file is automatically saved as `output.wav` in the directory where the application is running. **If a file named `output.wav` already exists in that folder, it will be overwritten without warning.** Be sure to rename or move your previous outputs if you want to keep them.
+> [!IMPORTANT]
+> The program only tracks **black pixels** to define the shape, discarding white pixels as empty space. If your source image features a white shape/text on a black background, make sure to invert the colors before uploading it to the GUI.
 
-*The GUI currently applies a binarization threshold of 128, a standard luminance grayscale filter (ITU-R BT.601 Luma), and keeps the stereo channel images mirrored.*
+> [!WARNING]
+> The processed file is automatically saved as `output.wav` in the same directory where the application is running. **If a file named `output.wav` already exists in that folder, it will be overwritten without warning.** Be sure to rename or move your previous outputs if you want to keep them.
+
+*The GUI currently applies a binarization threshold of 128, a standard luminance grayscale filter (ITU-R BT.601 Luma), and mirrors the images per stereo channel.*
 
 ## Preview and Examples
 
@@ -35,17 +38,22 @@ Below is an example of how the text silhouette 'domino' is modulated on an audio
 
 <table>
   <tr>
-    <th width="50%">Source Image</th>
-    <th width="50%">Resulting Waveform</th>
+    <th width="33.33%">Source Image</th>
+    <th width="33.33%">Base Audio</th>
+    <th width="33.33%">Output</th>
   </tr>
   <tr>
     <td>
-       <img src="images/domino.png" alt="domino Text Image Source" width="100%">
+       <img src="images/domino.png" alt="domino Image Source" width="100%">
        <p align="center">'domino' text</p>
     </td>
     <td>
-       <img src="images/audacity_output.png" alt="Audacity Waveform Output" width="100%">
-       <p align="center">The word 'domino' visible on stereo waveforms</p>
+       <img src="images/audacity_domino.png" alt="Base Audio Waveform" width="100%">
+       <p align="center">The original track's waveforms</p>
+    </td>
+    <td>
+       <img src="images/audacity_output.png" alt="Output Waveform" width="100%">
+       <p align="center">The word 'domino' visible on waveforms</p>
     </td>
   </tr>
 </table>
