@@ -1,8 +1,8 @@
-# Image to Sound (v0.2.1)
+# Image to Sound (v0.2.2)
 
 A desktop utility that modulates the amplitude of an existing audio file using the top and bottom boundaries of an image.
 
-> **Note:** The GUI is currently really simple (v0.2.1) right now because I'm learning (づ_ど); while the underlying Python engine supports advanced settings (like stereo splitting and custom thresholds), the GUI uses defaults for simple single-image audio modulation.
+> **Note:** The GUI is currently really simple (v0.2.2) right now because I'm learning (づ_ど); while the underlying Python engine supports advanced settings (like stereo splitting and custom thresholds), the GUI uses defaults for simple single-image audio modulation.
 
 ![Image to Sound GUI](images/gui.png)
 
@@ -15,7 +15,7 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 ## How to Use the Windows App (.exe)
 
 1. Go to the **Releases** tab on the right side of this GitHub repository.
-2. Download `image-to-sound-v0.2.1-windows-x64.exe`.
+2. Download `image-to-sound-v0.2.2-windows-x64.exe`.
 3. Run the executable.
 4. **Select Base Audio:** Click "Browse..." and select your base audio track.
 5. **Select Image Source:** Click "Browse..." and select the image you want to extract contours from.

@@ -172,7 +172,7 @@ class ImageToSoundWindow(QMainWindow):
         footer_layout = QHBoxLayout()
         footer_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.version_label = QLabel("v0.2.1")
+        self.version_label = QLabel("v0.2.2")
         self.version_label.setObjectName("VersionText")
         
         self.author_label = QLabel("ueij")
@@ -277,26 +277,26 @@ class ImageToSoundWindow(QMainWindow):
         end_text = self.end_input.text().strip()
 
         if not audio_path or not os.path.exists(audio_path):
-            self.show_message("Input Error", "Please select a valid base audio file first.", "warning")
+            self.show_message("Input Error", "Please select a valid base audio file.", "warning")
             return
 
         if not image_path or not os.path.exists(image_path):
-            self.show_message("Input Error", "Please select a valid image source file first.", "warning")
+            self.show_message("Input Error", "Please select a valid image source file.", "warning")
             return
 
         if not start_text or not end_text:
-            self.show_message("Input Error", "Start and End times cannot be left empty.", "warning")
+            self.show_message("Input Error", "The start and end times cannot be left empty.", "warning")
             return
 
         try:
             start_sec = float(start_text)
             end_sec = float(end_text)
         except ValueError:
-            self.show_message("Input Error", "Start and End times must be valid numbers.", "warning")
+            self.show_message("Input Error", "The start and end times must be valid numbers.", "warning")
             return
 
         if start_sec >= end_sec:
-            self.show_message("Input Error", "Start time must be less than end time.", "warning")
+            self.show_message("Input Error", "The start time must be less than the end time.", "warning")
             return
 
         self.set_ui_enabled(False)
