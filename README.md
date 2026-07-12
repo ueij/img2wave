@@ -29,22 +29,35 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 
 ## Preview and Examples
 
-Below is an example of how a simple shape modulates a continuous background audio track.
+Below is an example of how a text silhouette modulates an audio track.
 
-### 1. The Modulation Process
+### Image Previews
 
-| 1. Source Image (`domino.png`) | 2. Resulting Audacity Waveform |
-| :---: | :---: |
-| <img src="images/domino.png" width="300" alt="domino Text Image Source"> | <img src="images/audacity_output.png" width="300" alt="Audacity Waveform Output"> |
+<table>
+  <tr>
+    <th width="50%">Source Image</th>
+    <th width="50%">Resulting Audacity Waveform</th>
+  </tr>
+  <tr>
+    <td>
+       <img src="images/domino.png" alt="domino Text Image Source" width="100%">
+       <p align="center">'domino' Text</p>
+    </td>
+    <td>
+       <img src="images/audacity_output.png" alt="Audacity Waveform Output" width="100%">
+       <p align="center">'domino' Modulated on Base Audio</p>
+    </td>
+  </tr>
+</table>
 
-### 2. Audio Comparison
+### Audio Comparison
 
-You can listen to how the shape of the circle squeezes and shapes the volume of the base track:
+You can listen to how the shape of the text 'domino' squeezes and shapes the volume of the track:
 
 * **Original Base Audio:** 
-  [Listen to Original Track](audios/audio_domino.wav)
-* **Modulated Output (using the circle image above):** 
-  [Listen to Modulated Output](audios/audio_output.wav)
+  [Listen to Track](audios/audio_domino.wav)
+* **Modulated Output:** 
+  [Listen to Output](audios/audio_output.wav)
 
 ## Running from Source (Advanced Users)
 
