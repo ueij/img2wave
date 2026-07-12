@@ -29,35 +29,35 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 
 ## Preview and Examples
 
-Below is an example of how a text silhouette modulates an audio track.
+Below is an example of how the text silhouette 'domino' is modulated on an audio track.
 
 ### Image Previews
 
 <table>
   <tr>
     <th width="50%">Source Image</th>
-    <th width="50%">Resulting Audacity Waveform</th>
+    <th width="50%">Resulting Waveform</th>
   </tr>
   <tr>
     <td>
        <img src="images/domino.png" alt="domino Text Image Source" width="100%">
-       <p align="center">'domino' Text</p>
+       <p align="center">'domino' text</p>
     </td>
     <td>
        <img src="images/audacity_output.png" alt="Audacity Waveform Output" width="100%">
-       <p align="center">'domino' Modulated on Base Audio</p>
+       <p align="center">The word 'domino' visible on stereo waveforms</p>
     </td>
   </tr>
 </table>
 
 ### Audio Comparison
 
-You can listen to how the shape of the text 'domino' squeezes and shapes the volume of the track:
+You can download and listen to how the shape of the text squeezes and shapes the volume of the track:
 
 * **Original Base Audio:** 
-  [Listen to Track](audios/audio_domino.wav)
+  [Listen to domino.wav](audios/audio_domino.wav)
 * **Modulated Output:** 
-  [Listen to Output](audios/audio_output.wav)
+  [Listen to output.wav](audios/audio_output.wav)
 
 ## Running from Source (Advanced Users)
 
