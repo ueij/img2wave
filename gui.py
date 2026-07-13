@@ -1,10 +1,13 @@
 import sys
 import time
-import os
+from pathlib import Path
+
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QPushButton, QLineEdit, QFileDialog, QMessageBox
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+    QGroupBox, QLabel, QPushButton, QLineEdit, QFileDialog, QMessageBox,
+    QCheckBox
 )
-from PySide6.QtCore import Qt, QObject, Signal, QRunnable, QThreadPool
+from PySide6.QtCore import Qt, QObject, Signal, QRunnable, QThreadPool, QLocale
 from PySide6.QtGui import QDoubleValidator
 
 from image_processor import get_image_boundaries
@@ -51,12 +54,11 @@ class AudioGeneratorWorker(QRunnable):
                 output_path=self.config["output_path"]
             )
             
-            end_time = time.perf_counter()
-            elapsed_time = end_time - start_time
-            
+            elapsed_time = time.perf_counter() - start_time
             print(f"Generation completed in {elapsed_time:.4f} seconds.")
 
-            result_str = f"{os.path.abspath(self.config['output_path'])}|{elapsed_time:.4f}"
+            output_abs_path = str(Path(self.config["output_path"]).resolve())
+            result_str = f"{output_abs_path}|{elapsed_time:.4f}"
             self.signals.finished.emit(result_str)
 
         except Exception as e:
@@ -66,36 +68,41 @@ class AudioGeneratorWorker(QRunnable):
 class ImageToSoundWindow(QMainWindow):
     BG_MAIN = "rgb(24, 24, 24)"
     INPUT_BG = "rgb(36, 36, 36)"
-    
     TEXT_MAIN = "white"
     TEXT_MUTED = "gray"
     TEXT_DISABLED = "gray"
-    
     ACCENT_BLUE = "rgb(74, 164, 234)"
     ACCENT_HOVER = "rgb(100, 180, 240)"
     ACCENT_PRESS = "rgb(42, 136, 200)"
-    
     SECTION_BORDER = "rgb(48, 48, 48)"
     SECTION_BG = "rgba(48, 48, 48, 0.04)"
     BROWSE_BORDER = "rgb(60, 60, 65)"
     BROWSE_HOVER = "rgb(65, 65, 70)"
-    
     DISABLED_BG_DARK = "rgb(28, 28, 28)"
     DISABLED_BG_LIGHT = "rgb(50, 50, 50)"
-
-    DEFAULT_CONFIG = {
-        "width": 2048,
-        "height": 512,
-        "threshold": 128,
-        "grayscale_method": "luminance_601",
-        "invert": False,
-        "output_path": "output.wav"
-    }
 
     def __init__(self):
         super().__init__()
         self.thread_pool = QThreadPool.globalInstance()
+        self._init_paths()
         self.init_ui()
+
+    def _init_paths(self):
+        if getattr(sys, 'frozen', False):
+            self.app_dir = Path(sys.argv[0]).parent
+        else:
+            self.app_dir = Path(__file__).parent
+        
+        self.default_output_path = str((self.app_dir / "output.wav").resolve())
+        
+        self.default_config = {
+            "width": 2048,
+            "height": 512,
+            "threshold": 128,
+            "grayscale_method": "luminance_601",
+            "invert": False,
+            "output_path": self.default_output_path
+        }
 
     def init_ui(self):
         self.setWindowTitle("Image to Sound")
@@ -106,6 +113,10 @@ class ImageToSoundWindow(QMainWindow):
         main_layout = QVBoxLayout(container)
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10) 
+
+        files_layout = QVBoxLayout()
+        files_layout.setContentsMargins(0, 0, 0, 0)
+        files_layout.setSpacing(10)
 
         top_row_layout = QHBoxLayout()
         top_row_layout.setContentsMargins(0, 0, 0, 0) 
@@ -123,6 +134,23 @@ class ImageToSoundWindow(QMainWindow):
         top_row_layout.addWidget(self.audio_path_input, alignment=Qt.AlignmentFlag.AlignVCenter)
         top_row_layout.addWidget(self.audio_browse_button, alignment=Qt.AlignmentFlag.AlignVCenter)
         top_row_layout.addWidget(self.gen_button, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        output_row_layout = QHBoxLayout()
+        output_row_layout.setContentsMargins(0, 0, 0, 0)
+        output_row_layout.setSpacing(10)
+
+        output_label, self.output_path_input, self.output_browse_button = self._create_file_field(
+            "Output Path:", "output.wav"
+        )
+        self.output_path_input.setReadOnly(False)
+        self.output_path_input.setText(self.default_config["output_path"])
+
+        output_row_layout.addWidget(output_label, alignment=Qt.AlignmentFlag.AlignVCenter)
+        output_row_layout.addWidget(self.output_path_input, alignment=Qt.AlignmentFlag.AlignVCenter)
+        output_row_layout.addWidget(self.output_browse_button, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        files_layout.addLayout(top_row_layout)
+        files_layout.addLayout(output_row_layout)
         
         self.top_section = QGroupBox("IMAGE SETTINGS")
         self.top_section.setObjectName("TopSection")
@@ -153,18 +181,26 @@ class ImageToSoundWindow(QMainWindow):
 
         duration_validator = QDoubleValidator(0.0, 999999.0, 6, self)
         duration_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        duration_validator.setLocale(QLocale(QLocale.Language.English, QLocale.Country.UnitedStates))
 
         self.start_input = QLineEdit("2.0")
-        self.start_input.setPlaceholderText("Start (s)")
+        self.start_input.setPlaceholderText("Start time (s)")
         self.start_input.setFixedWidth(100)
         self.start_input.setValidator(duration_validator)
         timing_row_layout.addWidget(self.start_input, alignment=Qt.AlignmentFlag.AlignVCenter)
         
         self.end_input = QLineEdit("5.0")
-        self.end_input.setPlaceholderText("End (s)")
+        self.end_input.setPlaceholderText("End time (s)")
         self.end_input.setFixedWidth(100)
         self.end_input.setValidator(duration_validator)
         timing_row_layout.addWidget(self.end_input, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        # --- Add the checkbox here ---
+        self.invert_checkbox = QCheckBox("Invert Colors")
+        self.invert_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        # Apply the default config state to the UI element
+        self.invert_checkbox.setChecked(self.default_config["invert"]) 
+        timing_row_layout.addWidget(self.invert_checkbox, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         timing_row_layout.addStretch()
         top_section_layout.addLayout(timing_row_layout)
@@ -172,7 +208,7 @@ class ImageToSoundWindow(QMainWindow):
         footer_layout = QHBoxLayout()
         footer_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.version_label = QLabel("v0.2.2")
+        self.version_label = QLabel("v0.3.0")
         self.version_label.setObjectName("VersionText")
         
         self.author_label = QLabel("ueij")
@@ -182,7 +218,7 @@ class ImageToSoundWindow(QMainWindow):
         footer_layout.addStretch()
         footer_layout.addWidget(self.author_label)
 
-        main_layout.addLayout(top_row_layout)
+        main_layout.addLayout(files_layout)
         main_layout.addWidget(self.top_section)
         main_layout.addLayout(footer_layout)
         main_layout.addStretch()
@@ -195,7 +231,7 @@ class ImageToSoundWindow(QMainWindow):
         self.resize(550, hint_height)
         self.setFixedHeight(hint_height)
 
-    def _create_file_field(self, label_text: str, placeholder: str):
+    def _create_file_field(self, label_text, placeholder):
         label = QLabel(label_text)
         
         line_edit = QLineEdit()
@@ -210,19 +246,71 @@ class ImageToSoundWindow(QMainWindow):
 
     def setup_connections(self):
         self.audio_browse_button.clicked.connect(
-            lambda: self._browse_file("Select Base Audio", "Audio Files (*.mp3 *.wav *.ogg)", self.audio_path_input)
+            lambda: self._browse_file(
+                "Select Base Audio", 
+                "Audio Files (*.mp3 *.ogg *.wav);;All Files (*)", 
+                self.audio_path_input
+            )
         )
+
+        self.output_browse_button.clicked.connect(
+            lambda: self._browse_save_file(
+                "Select Output Path",
+                "WAV Files (*.wav)",
+                self.output_path_input
+            )
+        )
+
         self.browse_button.clicked.connect(
-            lambda: self._browse_file("Select Image Source", "Image Files (*.png *.jpg *.jpeg *.webp)", self.path_input)
+            lambda: self._browse_file(
+                "Select Image Source", 
+                "Image Files (*.jpg *.jpeg *.png *.webp);;All Files (*)", 
+                self.path_input
+            )
         )
         self.gen_button.clicked.connect(self.generate_audio)
 
-    def _browse_file(self, title: str, filter_str: str, target_input: QLineEdit):
+    def _browse_file(self, title, filter_str, target_input):
         file_path, _ = QFileDialog.getOpenFileName(self, title, "", filter_str)
         if file_path:
-            target_input.setText(file_path)
+            target_input.setText(str(Path(file_path).resolve())) 
 
-    def show_message(self, title: str, text: str, icon_type: str = "info"):
+    def _browse_save_file(self, title, filter_str, target_input):
+        default_path = target_input.text().strip()
+        file_path, _ = QFileDialog.getSaveFileName(self, title, default_path, filter_str)
+        if file_path:
+            target_input.setText(str(Path(file_path).resolve()))
+
+    def _apply_dialog_style(self, dialog):
+        dialog.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {self.BG_MAIN};
+            }}
+            QLabel {{
+                color: {self.TEXT_MAIN};
+                font-size: 12px;
+                font-weight: 500;
+            }}
+            QPushButton {{
+                background-color: {self.SECTION_BORDER};
+                color: {self.TEXT_MAIN};
+                border: 1px solid {self.BROWSE_BORDER};
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: 600;
+                min-width: 50px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.BROWSE_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.ACCENT_PRESS};
+                border-color: transparent;
+            }}
+        """)
+
+    def show_message(self, title, text, icon_type="info"):
         msg = QMessageBox(self)
         msg.setWindowTitle(title)
         msg.setText(text)
@@ -234,54 +322,31 @@ class ImageToSoundWindow(QMainWindow):
         else:
             msg.setIcon(QMessageBox.Icon.Information)
 
-        msg.setStyleSheet(f"""
-            QMessageBox {{
-                background-color: {self.BG_MAIN};
-            }}
-            QLabel {{
-                color: {self.TEXT_MAIN};
-                font-size: 14px;
-                font-weight: 500;
-            }}
-            QPushButton {{
-                background-color: {self.SECTION_BORDER};
-                color: {self.TEXT_MAIN};
-                border: 1px solid {self.BROWSE_BORDER};
-                border-radius: 4px;
-                padding: 2px 10px;
-                font-size: 12px;
-                font-weight: 600;
-                min-width: 40px;
-            }}
-            QPushButton:hover {{
-                background-color: {self.BROWSE_HOVER};
-            }}
-            QPushButton:pressed {{
-                background-color: {self.ACCENT_PRESS};
-                border-color: transparent;
-            }}
-        """)
+        self._apply_dialog_style(msg)
         msg.exec()
 
-    def set_ui_enabled(self, enabled: bool):
-        self.audio_browse_button.setEnabled(enabled)
-        self.browse_button.setEnabled(enabled)
-        self.start_input.setEnabled(enabled)
-        self.end_input.setEnabled(enabled)
-        self.gen_button.setEnabled(enabled)
-
+    def set_ui_enabled(self, enabled):
+        for widget in self.findChildren(QWidget):
+            if isinstance(widget, (QPushButton, QLineEdit, QCheckBox)):
+                widget.setEnabled(enabled)
+ 
     def generate_audio(self):
         audio_path = self.audio_path_input.text().strip()
         image_path = self.path_input.text().strip()
         start_text = self.start_input.text().strip()
         end_text = self.end_input.text().strip()
+        output_path = self.output_path_input.text().strip()
 
-        if not audio_path or not os.path.exists(audio_path):
+        if not audio_path or not Path(audio_path).exists():
             self.show_message("Input Error", "Please select a valid base audio file.", "warning")
             return
 
-        if not image_path or not os.path.exists(image_path):
+        if not image_path or not Path(image_path).exists():
             self.show_message("Input Error", "Please select a valid image source file.", "warning")
+            return
+
+        if not output_path:
+            self.show_message("Input Error", "Please specify a valid output path.", "warning")
             return
 
         if not start_text or not end_text:
@@ -299,10 +364,28 @@ class ImageToSoundWindow(QMainWindow):
             self.show_message("Input Error", "The start time must be less than the end time.", "warning")
             return
 
+        if Path(output_path).exists():
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Overwrite Warning")
+            msg.setText("The output file already exists. Do you want to overwrite it?")
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            msg.setDefaultButton(QMessageBox.StandardButton.No)
+            
+            self._apply_dialog_style(msg)
+            
+            reply = msg.exec()
+            if reply == QMessageBox.StandardButton.No:
+                return
+
         self.set_ui_enabled(False)
 
+        run_config = self.default_config.copy()
+        run_config["output_path"] = output_path
+        run_config["invert"] = self.invert_checkbox.isChecked() # <-- Dynamically assign the state here
+
         worker = AudioGeneratorWorker(
-            audio_path, image_path, start_sec, end_sec, self.DEFAULT_CONFIG
+            audio_path, image_path, start_sec, end_sec, run_config
         )
         worker.signals.finished.connect(self.on_generation_success)
         worker.signals.error.connect(self.on_generation_failed)
@@ -311,11 +394,9 @@ class ImageToSoundWindow(QMainWindow):
 
     def on_generation_success(self, result_data):
         self.set_ui_enabled(True)
-
         file_path, elapsed_time = result_data.split("|")
-
         self.show_message(
-            "Success", 
+            "Generation Success", 
             f"Audio generation completed in: {elapsed_time} seconds\n\nSaved to:\n{file_path}",
             "info"
         )
@@ -336,8 +417,8 @@ class ImageToSoundWindow(QMainWindow):
             
             QLabel {{
                 color: {self.TEXT_MAIN}; 
-                font-size: 14px; 
-                font-weight: 600;
+                font-size: 12px; 
+                font-weight: 500;
             }}
             QLabel#VersionText {{
                 color: {self.TEXT_MUTED};
@@ -402,11 +483,22 @@ class ImageToSoundWindow(QMainWindow):
                 color: {self.TEXT_DISABLED};
                 border: 1px solid transparent;
             }}
+
+            QCheckBox {{
+                color: {self.TEXT_MAIN};
+                font-size: 12px;
+                font-weight: 500;
+                margin-left: 4px;
+            }}
+            QCheckBox::indicator {{
+                width: 12px;
+                height: 12px;
+            }}
             
             QGroupBox#TopSection {{
-                font-size: 14px;
+                font-size: 12px;
                 font-weight: 600;
-                margin-top: 16px;
+                margin-top: 12px;
                 border-radius: 8px;
                 border: 1px solid {self.SECTION_BORDER}; 
                 background-color: {self.SECTION_BG};
