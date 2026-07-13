@@ -45,15 +45,15 @@ Below is an example of how the text silhouette 'domino' is modulated on an audio
   </tr>
   <tr>
     <td>
-       <img src="images/domino.png" alt="domino Image Source" width="100%">
+       <img src="images/domino_image.png" alt="domino Image Source" width="100%">
        <p align="center">'domino' text</p>
     </td>
     <td>
-       <img src="images/audacity_domino.png" alt="Base Audio Waveform" width="100%">
+       <img src="images/domino_base.png" alt="Base Audio Waveform" width="100%">
        <p align="center">The original track's waveforms</p>
     </td>
     <td>
-       <img src="images/audacity_output.png" alt="Output Waveform" width="100%">
+       <img src="images/domino_modulated.png" alt="Output Waveform" width="100%">
        <p align="center">The word 'domino' visible on waveforms</p>
     </td>
   </tr>
@@ -64,9 +64,9 @@ Below is an example of how the text silhouette 'domino' is modulated on an audio
 You can download and listen to how the shape of the text squeezes and shapes the volume of the track:
 
 * **Original Base Audio:** 
-  [Listen to domino.wav](audios/audio_domino.wav)
+  [Listen to domino_base.wav](audios/domino_base.wav)
 * **Modulated Output:** 
-  [Listen to output.wav](audios/audio_output.wav)
+  [Listen to domino_modulated.wav](audios/domino_modulated.wav)
 
 ## Running from Source (Advanced Users)
 
