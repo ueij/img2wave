@@ -1,12 +1,15 @@
-# Image to Sound (v0.3.0)
+# img2wave (v0.3.1)
 
 A desktop utility that modulates the amplitude of an existing audio file using the top and bottom boundaries of an image.
 
-> **Note:** The GUI (v0.3.0) is pretty simple right now because I'm still learning (づ_ど); while the underlying Python engine supports even more advanced settings (like custom image resolutions and specific grayscale filters), the GUI uses sensible defaults for quick single-image audio modulation.
+> **Note:** The app is pretty simple right now because I'm still learning (づ_ど); while the underlying Python engine supports even more advanced settings (like custom image resolutions and specific grayscale filters), the GUI uses sensible defaults for quick single-image audio modulation.
+
+*Thanks to* ***kyrup*** *for instigating the question for how to turn images to waveforms, and to [Japhy Riddle's YouTube video](https://www.youtube.com/watch?v=qeUAHHPt-LY) for the concept and overall idea.*
 
 ![Image to Sound GUI](images/gui.png)
 
 ## Features Available in the GUI
+
 * **Base Audio Selection:** Works with `.mp3`, `.ogg`, and `.wav` files.
 * **Custom Output Path:** Browse and select where to save your generated audio file and choose your own filename.
 * **Image Source Selection:** Supports `.jpg`, `.jpeg`, `.png`, and `.webp` images.
@@ -17,7 +20,7 @@ A desktop utility that modulates the amplitude of an existing audio file using t
 ## How to Use the Windows App (.exe)
 
 1. Go to the **Releases** tab on the right side of this GitHub repository.
-2. Download `image-to-sound-v0.3.0-windows-x64.exe`.
+2. Download `img2wave-v0.3.1-windows-x64.exe`.
 3. Run the executable.
 4. **Select Base Audio:** Click "Browse..." and select your base audio track.
 5. **Set Output Path:** The default is set to save as `output.wav` in the directory where the application is running, but you can click "Browse..." to change the destination and name.
@@ -64,9 +67,9 @@ Below is an example of how the text silhouette 'domino' is modulated on an audio
 You can download and listen to how the shape of the text squeezes and shapes the volume of the track:
 
 * **Original Base Audio:** 
-  [Listen to domino_base.wav](audios/domino_base.wav)
+  [Download](audios/domino_base.wav)
 * **Modulated Output:** 
-  [Listen to domino_modulated.wav](audios/domino_modulated.wav)
+  [Download](audios/domino_modulated.wav)
 
 ## Running from Source (Advanced Users)
 

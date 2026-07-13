@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QCheckBox
 )
 from PySide6.QtCore import Qt, QObject, Signal, QRunnable, QThreadPool, QLocale
-from PySide6.QtGui import QDoubleValidator
+from PySide6.QtGui import QDoubleValidator, QIcon
 
 from image_processor import get_image_boundaries
 from audio_generator import generate_wave_on_base_stereo
@@ -65,7 +65,7 @@ class AudioGeneratorWorker(QRunnable):
             self.signals.error.emit(str(e))
 
 
-class ImageToSoundWindow(QMainWindow):
+class ImageToWaveWindow(QMainWindow):
     BG_MAIN = "rgb(24, 24, 24)"
     INPUT_BG = "rgb(36, 36, 36)"
     TEXT_MAIN = "white"
@@ -89,11 +89,12 @@ class ImageToSoundWindow(QMainWindow):
 
     def _init_paths(self):
         if getattr(sys, 'frozen', False):
-            self.app_dir = Path(sys.argv[0]).parent
+            self.app_dir = Path(sys._MEIPASS)
+            self.exe_dir = Path(sys.argv[0]).parent
         else:
-            self.app_dir = Path(__file__).parent
+            self.app_dir = self.exe_dir = Path(__file__).parent
         
-        self.default_output_path = str((self.app_dir / "output.wav").resolve())
+        self.default_output_path = str((self.exe_dir / "output.wav").resolve())
         
         self.default_config = {
             "width": 2048,
@@ -105,7 +106,10 @@ class ImageToSoundWindow(QMainWindow):
         }
 
     def init_ui(self):
-        self.setWindowTitle("Image to Sound")
+        self.setWindowTitle("img2wave")
+
+        icon_path = self.app_dir / "img2wave.ico"
+        self.setWindowIcon(QIcon(str(icon_path)))
         
         container = QWidget()
         self.setCentralWidget(container)
@@ -208,7 +212,7 @@ class ImageToSoundWindow(QMainWindow):
         footer_layout = QHBoxLayout()
         footer_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.version_label = QLabel("v0.3.0")
+        self.version_label = QLabel("v0.3.1")
         self.version_label.setObjectName("VersionText")
         
         self.author_label = QLabel("ueij")
@@ -226,7 +230,7 @@ class ImageToSoundWindow(QMainWindow):
         self.setup_connections()
         self.apply_styles()
 
-        self.setMinimumWidth(450)
+        self.setMinimumWidth(500)
         hint_height = self.centralWidget().layout().sizeHint().height()
         self.resize(550, hint_height)
         self.setFixedHeight(hint_height)
@@ -515,6 +519,6 @@ class ImageToSoundWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = ImageToSoundWindow()
+    window = ImageToWaveWindow()
     window.show()
     sys.exit(app.exec())
