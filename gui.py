@@ -3,9 +3,7 @@ import time
 from pathlib import Path
 
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QGroupBox, QLabel, QPushButton, QLineEdit, QFileDialog, QMessageBox,
-    QCheckBox
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QPushButton, QLineEdit, QFileDialog, QMessageBox, QCheckBox
 )
 from PySide6.QtCore import Qt, QObject, Signal, QRunnable, QThreadPool, QLocale
 from PySide6.QtGui import QDoubleValidator, QIcon
@@ -212,7 +210,7 @@ class ImageToWaveWindow(QMainWindow):
         footer_layout = QHBoxLayout()
         footer_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.version_label = QLabel("v0.3.1")
+        self.version_label = QLabel("v0.3.2")
         self.version_label.setObjectName("VersionText")
         
         self.author_label = QLabel("ueij")
