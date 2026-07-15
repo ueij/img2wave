@@ -20,7 +20,7 @@
 * **Export Settings:**
   * **Export Full Song:** Toggle between exporting the entire base audio track (with the modulated portion mixed in) or just the isolated modulated segment.
   * **Normalize Output:** Force-normalize the output wave's peak amplitude to exactly 0 dBFS.
-* **Image Preview:** A real-time visual feedback panel displaying a binarized, filled-in representation of how your current settings affect the image envelope.
+* **Image Preview:** A real-time visual panel displaying a binarized, filled-in representation of how your current settings affect the image envelope.
 
 ## How to Use the Windows App (.exe)
 
