@@ -1,40 +1,39 @@
-# img2wave (v0.3.2)
+# img2wave (v1.0.0)
 
 ![img2wave Title](images/img2wave_title.png)
 
 **img2wave** is a desktop utility that modulates the amplitude of an existing audio file using the top and bottom boundaries of an image.
 
-> **Note:** The app is pretty simple right now because I'm still learning (づ_ど); while the underlying Python engine supports even more advanced settings (like custom image resolutions and specific grayscale filters), the GUI uses sensible defaults for quick single-image audio modulation.
-
-*Thanks to* ***kyrup*** *for instigating the question for how to turn images to waveforms, and to [Japhy Riddle's YouTube video](https://www.youtube.com/watch?v=qeUAHHPt-LY) for the concept and overall idea.*
+> *Thanks to* ***kyrup*** *for instigating the question for how to turn images to waveforms, and to [Japhy Riddle's YouTube video](https://www.youtube.com/watch?v=qeUAHHPt-LY) for the concept and overall idea.* (づ_ど)
 
 ![img2wave GUI](images/img2wave_gui.png)
 
 ## Features Available in the GUI
 
-* **Base Audio Selection:** Works with `.mp3`, `.ogg`, and `.wav` files.
-* **Custom Output Path:** Browse and select where to save your generated audio file and choose your own filename.
-* **Image Source Selection:** Supports `.jpg`, `.jpeg`, `.png`, and `.webp` images.
-* **Segment Timing:** Choose exactly when (in seconds) the image modulation starts and ends within your base audio.
-* **Invert Colors:** Toggle color inversion directly in the GUI to easily process light shapes on dark backgrounds.
-* **Stereo Processing:** Generates a 24-bit stereo `.wav` file with the modulation applied to your selected segment.
+* **Base Audio & Output Path:** Work with common audio files like `.mp3`, `.ogg`, and `.wav` files. Customize your output directory and filename.
+* **Segment Timing:** Choose exactly when (in seconds) the image modulation starts and ends within your audio track.
+* **Resolution** Manually define the processing width and height of the image analysis (larger dimensions provide finer boundary details).
+* **Interpolate:** Toggle between smooth linear interpolation and blocky nearest-neighbor interpolation.
+* **Invert Colors:** Instantly swap dark and light spaces to process light shapes on dark backgrounds.
+* **Dynamic Threshold Control:** Use the slider or text input (0–255) to quickly dial in the binarization threshold.
+* **Grayscale Methods:** Choose from Luma 601, Luma 709, Average, or Lightness algorithms to handle color-to-grayscale conversion.
+* **Export Settings:**
+  * **Export Full Song:** Toggle between exporting the entire base audio track (with the modulated portion mixed in) or just the isolated modulated segment.
+  * **Normalize Output:** Force-normalize the output wave's peak amplitude to exactly 0 dBFS (1.0).
+* **Image Preview:** A real-time visual feedback panel displaying a binarized, filled-in representation of how your current settings affect the image envelope.
 
 ## How to Use the Windows App (.exe)
 
 1. Go to the **Releases** tab on the right side of this GitHub repository.
-2. Download `img2wave-v0.3.2-windows-x64.exe`.
+2. Download `img2wave-v1.0.0-windows-x64.exe`.
 3. Run the executable.
 4. **Select Base Audio:** Click "Browse..." and select your base audio track.
-5. **Set Output Path:** The default is set to save as `output.wav` in the directory where the application is running, but you can click "Browse..." to change the destination and name.
-6. **Select Image Source:** Click "Browse..." and select the image you want to extract contours from.
-7. **Set Segment Timing:** Input the start time and end time (in seconds) where you want the visual shape to affect the audio.
-8. **Invert Colors (Optional):** Check the "Invert Colors" box if your image has a light shape on a dark background.
-9. **Generate:** Click **Generate Audio**.
+5. **Select Image Source:** Click "Browse..." and select the image you want to extract contours from.
+6. **Set Segment Timing:** Input the start time and end time (in seconds) where you want the visual shape to modulate the audio.
+7. **Generate:** Click **Generate Audio**.
 
 > [!IMPORTANT]
-> The processing engine tracks **black pixels** to define the shape and discards white pixels as empty space. If your source image features a white shape/text on a black background, make sure the **Invert Colors** checkbox is checked.
-
-*The GUI currently applies a binarization threshold of 128, a standard luminance grayscale filter (ITU-R BT.601 Luma), and mirrors the images per stereo channel.*
+> The processing engine tracks **black pixels** to define the boundaries of the shape and discards white pixels as empty space. If your source image features a white shape/text on a dark background, make sure the **Invert Colors** checkbox is checked.
 
 ## Preview and Examples
 
@@ -73,11 +72,34 @@ You can download and listen to how the shape of the text squeezes and shapes the
 * **Modulated Output:** 
   [Download](https://github.com/ueij/img2wave/raw/refs/heads/main/audios/domino_modulated.wav)
 
-## Running from Source (Advanced Users)
+## Running from Source (Command-Line Interface)
 
-If you want to use the full feature set (such as independent stereo channels, custom image resolutions, or manual threshold adjustments), you can run the command-line interface (`main.py`) directly using Python.
+If you prefer to bypass the graphical interface and run the tool directly from your terminal, you can interact with `main.py`.
 
 ### Prerequisites
 Make sure you have Python 3.10+ installed. Install the dependencies:
 ```bash
 pip install PySide6 pillow numpy soundfile
+```
+
+### CLI Usage & Arguments
+Run the script by providing the required audio and image inputs:
+```bash
+python main.py --audio "my_audio.wav" --image "my_image.png" --start 2.0 --end 5.0
+```
+
+#### Available CLI Arguments:
+* `--audio <path>` (Required): Path to the base audio file.
+* `--image <path>` (Required): Path to the image file.
+* `--output <path>` (Default: `output.wav`): Path to save the generated WAV file.
+* `--start <float>` (Default: `2.0`): Segment start time in seconds.
+* `--end <float>` (Default: `5.0`): Segment end time in seconds.
+* `--threshold <int>` (Default: `128`): Binarization threshold value (0–255).
+* `--grayscale <method>` (Default: `luminance_601`): Grayscale algorithm choice: `luminance_601`, `luminance_709`, `average`, or `lightness`.
+* `--invert`: Flag to invert image colors.
+* `--width <int>` (Default: `2048`): Analysis resolution width.
+* `--height <int>` (Default: `512`): Analysis resolution height.
+* `--smooth / --no-smooth` (Default: `--smooth`): Use linear interpolation or blocky, step-based interpolation.
+* `--normalize`: Flag to normalize output peak levels to 0 dBFS.
+* `--export-full / --no-export-full` (Default: `--export-full`): Export the full song length or only the modulated segment.
+* `--debug`: Flag to export debug binarized and filled-in PNG images of the analysis process.

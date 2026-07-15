@@ -16,7 +16,11 @@ def get_image_boundaries(
     clamped_threshold = max(0, min(255, int(threshold)))
     
     with Image.open(image_path) as img:
-        if img.mode != 'RGB':
+        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+            img_rgba = img.convert('RGBA')
+            background = Image.new('RGBA', img_rgba.size, (255, 255, 255, 255))
+            img = Image.alpha_composite(background, img_rgba).convert('RGB')
+        elif img.mode != 'RGB':
             img = img.convert('RGB')
             
         img_resized = img.resize(
