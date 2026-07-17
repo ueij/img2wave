@@ -97,6 +97,17 @@ class ImageToWaveWindow(QMainWindow):
         self._cached_grayscale_method = None
         self._cached_gray_array = None
 
+        self._last_preview_params = {
+            "image_path": None,
+            "width": None,
+            "height": None,
+            "threshold": None,
+            "grayscale_method": None,
+            "invert": None,
+            "mode": None,
+            "aspect_ratio": None
+        }
+
         self.PREVIEW_MAX_WIDTH = 280
         self.PREVIEW_MAX_HEIGHT = 160
 
@@ -282,25 +293,50 @@ class ImageToWaveWindow(QMainWindow):
         self.preview_section = QGroupBox("IMAGE PREVIEW")
         self.preview_section.setObjectName("PreviewSection")
         self.preview_section.setFixedWidth(300)
-        self.preview_section.setFixedHeight(220)
 
-        preview_section_layout = self._create_vbox(margins=(10, 10, 10, 10))
+        preview_section_layout = self._create_vbox(margins=(10, 10, 10, 10), spacing=10)
         self.preview_section.setLayout(preview_section_layout)
+
+        self.preview_box = QWidget()
+        self.preview_box.setObjectName("PreviewBox")
+        self.preview_box.setFixedSize(self.PREVIEW_MAX_WIDTH, self.PREVIEW_MAX_HEIGHT)
+        
+        preview_box_layout = QVBoxLayout(self.preview_box)
+        preview_box_layout.setContentsMargins(1, 1, 1, 1)
+        preview_box_layout.setSpacing(0)
 
         self.preview_label = QLabel("No image loaded.")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setStyleSheet(f"color: {self.TEXT_MUTED}; font-style: italic;")
-        preview_section_layout.addWidget(self.preview_label)
+        preview_box_layout.addWidget(self.preview_label)
 
-        self.aspect_ratio_checkbox = self._create_checkbox("Preview Original Aspect Ratio", True)
+        preview_section_layout.addWidget(self.preview_box, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        mode_row_layout = self._create_hbox()
+        mode_label = QLabel("Preview Mode:")
+        self.mode_combo = QComboBox()
+        
+        self.mode_combo.addItem("Colored", "colored")
+        self.mode_combo.addItem("Grayscaled", "grayscaled")
+        self.mode_combo.addItem("Binarized", "binarized")
+        self.mode_combo.addItem("Filled", "filled")
+        
+        self.mode_combo.setCurrentIndex(3)
+
+        mode_row_layout.addWidget(mode_label, alignment=Qt.AlignmentFlag.AlignVCenter)
+        mode_row_layout.addWidget(self.mode_combo, alignment=Qt.AlignmentFlag.AlignVCenter)
+        mode_row_layout.addStretch()
+        preview_section_layout.addLayout(mode_row_layout)
+
+        self.aspect_ratio_checkbox = self._create_checkbox("Preview in Original Aspect Ratio", True)
         preview_section_layout.addWidget(self.aspect_ratio_checkbox, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        settings_container_layout.addWidget(self.preview_section)
+        settings_container_layout.addWidget(self.preview_section, alignment=Qt.AlignmentFlag.AlignTop)
 
         main_layout.addLayout(settings_container_layout)
 
         footer_layout = self._create_hbox()
-        self.version_label = QLabel("v1.0.0")
+        self.version_label = QLabel("v1.1.0")
         self.version_label.setObjectName("VersionText")
         self.author_label = QLabel("ueij")
         self.author_label.setObjectName("AuthorText")
@@ -317,6 +353,7 @@ class ImageToWaveWindow(QMainWindow):
         self.height_input.textChanged.connect(self.update_preview)
         self.threshold_input.textChanged.connect(self.update_preview)
         self.grayscale_combo.currentIndexChanged.connect(self.update_preview)
+        self.mode_combo.currentIndexChanged.connect(self.update_preview)
         self.invert_checkbox.stateChanged.connect(self.update_preview)
         self.aspect_ratio_checkbox.stateChanged.connect(self.update_preview)
 
@@ -327,8 +364,8 @@ class ImageToWaveWindow(QMainWindow):
 
         self.setMinimumWidth(800)
         hint_height = self.centralWidget().layout().sizeHint().height()
+        self.setMinimumHeight(hint_height)
         self.resize(800, hint_height)
-        self.setFixedHeight(hint_height)
 
     def _create_hbox(self, margins=(0, 0, 0, 0), spacing=10):
         layout = QHBoxLayout()
@@ -476,6 +513,7 @@ class ImageToWaveWindow(QMainWindow):
     def update_preview(self):
         image_path = self.path_input.text().strip()
         if not image_path or not Path(image_path).exists():
+            self.preview_label.setPixmap(QPixmap())
             self.preview_label.setText("No image loaded.")
             self.preview_label.setStyleSheet(f"color: {self.TEXT_MUTED}; font-style: italic;")
 
@@ -485,6 +523,10 @@ class ImageToWaveWindow(QMainWindow):
             self._cached_height = None
             self._cached_grayscale_method = None
             self._cached_gray_array = None
+            self._last_preview_params = {
+                "image_path": None, "width": None, "height": None, "threshold": None,
+                "grayscale_method": None, "invert": None, "mode": None, "aspect_ratio": None
+            }
             return
 
         try:
@@ -494,24 +536,58 @@ class ImageToWaveWindow(QMainWindow):
             if not (1 <= width <= 9999) or not (1 <= height <= 9999) or not (0 <= threshold <= 255):
                 raise ValueError
         except ValueError:
+            self.preview_label.setPixmap(QPixmap())
             self.preview_label.setText("Invalid settings.")
             self.preview_label.setStyleSheet(f"color: {self.TEXT_MUTED}; font-style: italic;")
             return
 
         grayscale_method = self.grayscale_combo.currentData()
         invert = self.invert_checkbox.isChecked()
+        mode = self.mode_combo.currentData()
+        aspect_ratio = self.aspect_ratio_checkbox.isChecked()
+
+        if (self._last_preview_params["image_path"] == image_path and
+                self._last_preview_params["width"] == width and
+                self._last_preview_params["height"] == height and
+                self._last_preview_params["invert"] == invert and
+                self._last_preview_params["mode"] == mode and
+                self._last_preview_params["aspect_ratio"] == aspect_ratio):
+            
+            if mode == "colored":
+                return
+            
+            if mode == "grayscaled" and self._last_preview_params["grayscale_method"] == grayscale_method:
+                return
+            
+            if (mode in ("binarized", "filled") and 
+                    self._last_preview_params["threshold"] == threshold and 
+                    self._last_preview_params["grayscale_method"] == grayscale_method):
+                return
 
         try:
-            pixmap = self._generate_preview_pixmap(image_path, width, height, threshold, grayscale_method, invert)
+            pixmap = self._generate_preview_pixmap(image_path, width, height, threshold, grayscale_method, invert, mode)
             if pixmap:
                 self.preview_label.setPixmap(pixmap)
+
+                self._last_preview_params.update({
+                    "image_path": image_path,
+                    "width": width,
+                    "height": height,
+                    "threshold": threshold,
+                    "grayscale_method": grayscale_method,
+                    "invert": invert,
+                    "mode": mode,
+                    "aspect_ratio": aspect_ratio
+                })
             else:
+                self.preview_label.setPixmap(QPixmap())
                 self.preview_label.setText("Preview error.")
         except Exception as e:
             print(f"Error calculating preview internally: {e}")
+            self.preview_label.setPixmap(QPixmap())
             self.preview_label.setText("Preview error.")
 
-    def _get_or_create_gray_array(self, image_path, width, height, grayscale_method):
+    def _get_original_image(self, image_path):
         if self._cached_image_path != image_path or self._cached_original_image is None:
             try:
                 with Image.open(image_path) as img:
@@ -533,15 +609,20 @@ class ImageToWaveWindow(QMainWindow):
                 print(f"Error loading image: {e}")
                 self._cached_original_image = None
                 self._cached_image_path = None
-                return None, None
+                return None
+        return self._cached_original_image
+
+    def _get_or_create_gray_array(self, proc_w, proc_h, grayscale_method):
+        if self._cached_original_image is None:
+            return None
 
         if (self._cached_gray_array is None or
-                self._cached_width != width or
-                self._cached_height != height or
+                self._cached_width != proc_w or
+                self._cached_height != proc_h or
                 self._cached_grayscale_method != grayscale_method):
             try:
                 img_resized = self._cached_original_image.resize(
-                    (width, height), 
+                    (proc_w, proc_h), 
                     resample=Image.Resampling.BILINEAR
                 )
                 
@@ -563,41 +644,25 @@ class ImageToWaveWindow(QMainWindow):
                         img_gray = np.dot(img_array.astype(np.float32), weights).astype(np.uint8)
                 
                 self._cached_gray_array = img_gray
-                self._cached_width = width
-                self._cached_height = height
+                self._cached_width = proc_w
+                self._cached_height = proc_h
                 self._cached_grayscale_method = grayscale_method
                 
             except Exception as e:
                 print(f"Error rendering grayscale array: {e}")
                 self._cached_gray_array = None
-                return None, None
+                return None
                 
-        return self._cached_gray_array, self._cached_original_image.size
+        return self._cached_gray_array
 
-    def _generate_preview_pixmap(self, image_path, width, height, threshold, grayscale_method, invert):
+    def _generate_preview_pixmap(self, image_path, width, height, threshold, grayscale_method, invert, mode):
         clamped_threshold = max(0, min(255, int(threshold)))
         
-        gray_array, original_size = self._get_or_create_gray_array(image_path, width, height, grayscale_method)
-        if gray_array is None or original_size is None:
+        orig_img = self._get_original_image(image_path)
+        if orig_img is None:
             return None
-
-        if invert:
-            binary_grid = gray_array >= clamped_threshold
-        else:
-            binary_grid = gray_array < clamped_threshold
             
-        has_active = np.any(binary_grid, axis=0)
-        first_y = np.argmax(binary_grid, axis=0)
-        last_y = (height - 1) - np.argmax(binary_grid[::-1, :], axis=0)
-        
-        r_indices = np.arange(height)[:, None]
-        filled_grid = has_active & (r_indices >= first_y) & (r_indices <= last_y)
-        
-        debug_fill = (~filled_grid).astype(np.uint8) * 255
-        
-        preview_pil = Image.fromarray(debug_fill)
-        
-        orig_width, orig_height = original_size
+        orig_width, orig_height = orig_img.size
 
         if self.aspect_ratio_checkbox.isChecked():
             aspect_ratio = orig_width / orig_height
@@ -614,11 +679,67 @@ class ImageToWaveWindow(QMainWindow):
             
         preview_w = max(1, preview_w)
         preview_h = max(1, preview_h)
+
+        proc_w = max(1, min(width, preview_w))
+        proc_h = max(1, min(height, preview_h))
+
+        is_color = False
+
+        if mode == "colored":
+            try:
+                img_resized = orig_img.resize(
+                    (proc_w, proc_h), 
+                    resample=Image.Resampling.BILINEAR
+                )
+                img_array = np.array(img_resized)
+                if invert:
+                    img_array = 255 - img_array
+                preview_pil = Image.fromarray(img_array)
+                is_color = True
+            except Exception as e:
+                print(f"Error rendering colored preview: {e}")
+                return None
+
+        else:
+            gray_array = self._get_or_create_gray_array(proc_w, proc_h, grayscale_method)
+            if gray_array is None:
+                return None
+
+            if mode == "grayscaled":
+                processed_gray = 255 - gray_array if invert else gray_array
+                preview_pil = Image.fromarray(processed_gray)
+
+            elif mode == "binarized":
+                if invert:
+                    binary_grid = gray_array >= clamped_threshold
+                else:
+                    binary_grid = gray_array < clamped_threshold
+                binarized_array = (~binary_grid).astype(np.uint8) * 255
+                preview_pil = Image.fromarray(binarized_array)
+
+            else:
+                if invert:
+                    binary_grid = gray_array >= clamped_threshold
+                else:
+                    binary_grid = gray_array < clamped_threshold
+                    
+                has_active = np.any(binary_grid, axis=0)
+                first_y = np.argmax(binary_grid, axis=0)
+                last_y = (proc_h - 1) - np.argmax(binary_grid[::-1, :], axis=0)
+                
+                r_indices = np.arange(proc_h)[:, None]
+                filled_grid = has_active & (r_indices >= first_y) & (r_indices <= last_y)
+                
+                debug_fill = (~filled_grid).astype(np.uint8) * 255
+                preview_pil = Image.fromarray(debug_fill)
         
         preview_pil_resized = preview_pil.resize((preview_w, preview_h), resample=Image.Resampling.NEAREST)
         
         im_bytes = preview_pil_resized.tobytes()
-        qimg = QImage(im_bytes, preview_w, preview_h, preview_w, QImage.Format.Format_Grayscale8)
+        if is_color:
+            qimg = QImage(im_bytes, preview_w, preview_h, preview_w * 3, QImage.Format.Format_RGB888)
+        else:
+            qimg = QImage(im_bytes, preview_w, preview_h, preview_w, QImage.Format.Format_Grayscale8)
         
         return QPixmap.fromImage(qimg.copy())
 
@@ -841,6 +962,12 @@ class ImageToWaveWindow(QMainWindow):
                 subcontrol-origin: margin;
                 subcontrol-position: top right;
                 padding: 0 2px;
+            }}
+
+            QWidget#PreviewBox {{
+                background-color: rgb(16, 16, 16);
+                border: 1px solid {self.SECTION_BORDER};
+                border-radius: 4px;
             }}
 
             QSlider::groove:horizontal {{

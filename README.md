@@ -1,4 +1,4 @@
-# img2wave (v1.0.0)
+# img2wave (v1.1.0)
 
 ![img2wave Title](images/img2wave_title.png)
 
@@ -15,7 +15,7 @@
 * **Resolution** Manually define the processing width and height of the image analysis (larger dimensions provide finer boundary details).
 * **Interpolate:** Toggle between smooth linear interpolation and blocky nearest-neighbor interpolation.
 * **Invert Colors:** Instantly swap dark and light spaces to process light shapes on dark backgrounds.
-* **Dynamic Threshold Control:** Use the slider or text input (0–255) to quickly dial in the binarization threshold.
+* **Threshold:** Use the slider or text input (0–255) to quickly dial in the binarization threshold.
 * **Grayscale Methods:** Choose from Luma 601, Luma 709, Average, or Lightness algorithms to handle color-to-grayscale conversion.
 * **Export Settings:**
   * **Export Full Song:** Toggle between exporting the entire base audio track (with the modulated portion mixed in) or just the isolated modulated segment.
@@ -25,10 +25,11 @@
 ## How to Use the Windows App (.exe)
 
 1. Go to the **Releases** tab on the right side of this GitHub repository.
-2. Download `img2wave-v1.0.0-windows-x64.exe`.
+2. Download `img2wave-v1.1.0-windows-x64.exe`.
 3. Run the executable.
-4. **Select Base Audio:** Click "Browse..." and select your base audio track.
-5. **Select Image Source:** Click "Browse..." and select the image you want to extract contours from.
+4. **Select Base Audio:** Select your base audio track.
+5. **Select Output Path:** Select the directory where the output will be saved.
+5. **Select Image Source:** Select the image you want to extract contours from.
 6. **Set Segment Timing:** Input the start time and end time (in seconds) where you want the visual shape to modulate the audio.
 7. **Generate:** Click **Generate Audio**.
 
